@@ -1,0 +1,12 @@
+[package]
+name = "renderer"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+fps = ["screen/fps"]
+
+[dependencies]
+screen = {git = "https://github.com/krisrosengreen/screen"}
+utils = {path = "../utils"}
+map = {path = "../map"}
