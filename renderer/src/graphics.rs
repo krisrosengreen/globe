@@ -1,15 +1,9 @@
+use crate::interface::ScreenHandler;
 use screen::screen::{Drawable, Time};
-
-use utils::utils::{Pos, ScreenPos};
+use utils::{Pos, ScreenPos};
 
 pub const SCREEN_DIST_Z: f32 = 50.0;
-
-#[allow(unused)]
-pub const LIGHT_DIRECTION: Pos = Pos {
-    x: 1.0,
-    y: 0.0,
-    z: 0.0,
-};
+const SCREEN_Y_OFFSET: f32 = 2.0;
 
 pub const LUMINANCE: [char; 69] = [
     '.', '\'', '`', '^', '"', ',', ':', ';', 'I', 'l', '!', 'i', '>', '<', '~', '+', '_', '-', '?',
@@ -21,7 +15,7 @@ pub const LUMINANCE_COUNT: u8 = 69;
 
 pub struct Body {
     pub pos: Pos,
-    pub is_water: bool
+    pub is_water: bool,
 }
 
 impl Body {
@@ -47,11 +41,11 @@ impl Drawable for Body {
     }
 }
 
-pub trait ScreenPosUtils {
+pub trait PosUtils {
     fn to_screen_pos(&self) -> ScreenPos;
 }
 
-impl ScreenPosUtils for Pos {
+impl PosUtils for Pos {
     fn to_screen_pos(&self) -> ScreenPos {
         let scale_factor = SCREEN_DIST_Z / self.z;
 
@@ -82,7 +76,10 @@ mod tests {
             z: 0.0,
         };
 
-        let test_body = Body { pos: test_pos, is_water: false};
+        let test_body = Body {
+            pos: test_pos,
+            is_water: false,
+        };
 
         let time = Time { current_time: 1.0 };
 
@@ -97,5 +94,65 @@ mod tests {
         );
 
         assert!((rotated_pos.size() - 10.0).abs() < FLOAT_EPSILON);
+    }
+}
+
+impl ScreenHandler {
+    pub fn set_point(&mut self, pos: Pos, luminance: char) {
+        if !ScreenPos::is_drawable(pos.x, pos.y + SCREEN_Y_OFFSET) {
+            return;
+        }
+
+        let screen_pos_offset = Pos {
+            x: pos.x,
+            y: pos.y + SCREEN_Y_OFFSET,
+            z: pos.z,
+        };
+
+        let screen_pos = screen_pos_offset.to_screen_pos();
+        let indeces = screen_pos.to_indeces();
+
+        // If z-pos is smaller, character can be drawn...
+        if self.is_drawable_z(indeces[0], indeces[1], pos.z) {
+            self.set_screen(indeces[0], indeces[1], luminance);
+
+            self.set_z_buffer(indeces[0], indeces[1], pos.z);
+        } else {
+            if (self.get_z_buffer(indeces[0], indeces[1]) - pos.z).abs() < 0.2 {
+                // If the character we want to draw is not dark and the point on screen is dark
+                if luminance != '.' {
+                    self.set_screen(indeces[0], indeces[1], luminance);
+                }
+            }
+        }
+    }
+
+    pub fn set_point_illuminated_world(&mut self, pos: Pos, is_water: bool) {
+        let start_light_direction = Pos {
+            x: -0.5,
+            y: 0.0,
+            z: -0.5,
+        };
+
+        let center_pos = Pos {
+            x: 0.0,
+            y: 0.0,
+            z: 10.0,
+        };
+
+        let diff = &pos - &center_pos;
+        let diff = &diff / diff.size();
+
+        let dot = diff.x * start_light_direction.x
+            + diff.y * start_light_direction.y
+            + diff.z * start_light_direction.z;
+
+        if dot < 0.0 || is_water {
+            self.set_point(pos, '.');
+        } else {
+            let char_index = (dot * (LUMINANCE_COUNT as f32) - 1.0).floor() as usize;
+
+            self.set_point(pos, LUMINANCE[char_index]);
+        }
     }
 }

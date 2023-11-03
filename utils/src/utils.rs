@@ -37,6 +37,7 @@ impl ScreenPos {
 impl Pos {
     // Rotates on the x and z plane
     pub fn rotate(&self, angle: f32) -> Pos {
+        // Rotation matrix:
         // cos(theta) 0  sin(theta)
         // 0          1  0
         // sin(theta) 0 -cos(theta)
@@ -53,7 +54,7 @@ impl Pos {
 
     pub fn normalize(&mut self) {
         let size = self.size();
-        
+
         self.x /= size;
         self.y /= size;
         self.z /= size;

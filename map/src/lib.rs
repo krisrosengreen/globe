@@ -1,2 +1,2 @@
-pub mod mercator;
 pub mod loadmap;
+pub mod mercator;
